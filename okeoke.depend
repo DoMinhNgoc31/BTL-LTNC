@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1742059948 source:c:\c++ so sinh\okeoke\main.cpp
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	<iostream>
+	<cstdlib>
+	<ctime>
+	<string>
+
