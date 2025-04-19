@@ -6,22 +6,24 @@
 #include <ctime>
 #include <string>
 
-const int SCREEN_WIDTH = 700;
-const int SCREEN_HEIGHT = 600;
-const int GRID_SIZE = 10;
+const int SCREEN_WIDTH = 900;
+const int SCREEN_HEIGHT = 700;
+const int GRID_SIZE = 8;
 const int CELL_SIZE = SCREEN_HEIGHT / GRID_SIZE;
 
 struct Player {
     int position;
-    SDL_Color color;
 };
 
 int lastRoll = 1;
 bool gameWon = false;
 std::string winner = "";
 
-// Load hình ảnh xúc xắc
 SDL_Texture* diceTextures[6] = {nullptr};
+SDL_Texture* boardTexture = nullptr;
+SDL_Texture* backgroundTexture = nullptr;
+SDL_Texture* playerTextures[2] = {nullptr};
+TTF_Font* font = nullptr;
 
 int rollDice() {
     lastRoll = rand() % 6 + 1;
@@ -29,7 +31,7 @@ int rollDice() {
 }
 
 int getRow(int pos) {
-    return GRID_SIZE - 1 - (pos - 1) / GRID_SIZE;
+    return (GRID_SIZE - 1) - ((pos - 1) / GRID_SIZE);
 }
 
 int getCol(int pos) {
@@ -41,70 +43,66 @@ int getCol(int pos) {
     }
 }
 
-void movePlayer(Player &player, int roll, std::string playerName) {
-    if (player.position + roll <= 100) {
-        player.position += roll;
-    }
-
-    if (player.position == 100) {
-        gameWon = true;
-        winner = playerName;
-    }
-
-    int snakes[] = {16, 47, 49, 56, 62, 64, 87, 93, 95, 98};
-    int snakeEnds[] = {6, 26, 11, 53, 19, 60, 24, 73, 75, 78};
-    int ladders[] = {1, 4, 9, 21, 28, 36, 51, 71, 80};
-    int ladderEnds[] = {38, 14, 31, 42, 84, 44, 67, 91, 97};
-
-    for (int i = 0; i < 10; i++) {
-        if (player.position == snakes[i]) {
-            player.position = snakeEnds[i];
-        }
-    }
-    for (int i = 0; i < 9; i++) {
-        if (player.position == ladders[i]) {
-            player.position = ladderEnds[i];
-        }
+void drawBackground(SDL_Renderer *renderer) {
+    if (backgroundTexture) {
+        SDL_Rect bgRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+        SDL_RenderCopy(renderer, backgroundTexture, NULL, &bgRect);
     }
 }
 
 void drawBoard(SDL_Renderer *renderer) {
-    for (int i = 0; i <= GRID_SIZE; i++) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderDrawLine(renderer, i * CELL_SIZE, 0, i * CELL_SIZE, SCREEN_HEIGHT);
-        SDL_RenderDrawLine(renderer, 0, i * CELL_SIZE, SCREEN_HEIGHT, i * CELL_SIZE);
+    if (boardTexture) {
+        SDL_Rect boardRect = {150, 0, SCREEN_HEIGHT, SCREEN_HEIGHT};
+        SDL_RenderCopy(renderer, boardTexture, NULL, &boardRect);
     }
 }
 
-void drawSnakesAndLadders(SDL_Renderer *renderer) {
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    int snakes[] = {16, 47, 49, 56, 62, 64, 87, 93, 95, 98};
-    int snakeEnds[] = {6, 26, 11, 53, 19, 60, 24, 73, 75, 78};
-    int ladders[] = {1, 4, 9, 21, 28, 36, 51, 71, 80};
-    int ladderEnds[] = {38, 14, 31, 42, 84, 44, 67, 91, 97};
-
-    for (int i = 0; i < 10; i++) {
-        SDL_RenderDrawLine(renderer, getCol(snakes[i]) * CELL_SIZE + CELL_SIZE / 2, getRow(snakes[i]) * CELL_SIZE + CELL_SIZE / 2,
-                           getCol(snakeEnds[i]) * CELL_SIZE + CELL_SIZE / 2, getRow(snakeEnds[i]) * CELL_SIZE + CELL_SIZE / 2);
+void drawPlayer(SDL_Renderer *renderer, Player player, int index) {
+    if (player.position > 0 && playerTextures[index]) {
+        SDL_Rect rect = {
+            150 + getCol(player.position) * CELL_SIZE + CELL_SIZE / 4 - CELL_SIZE / 4,
+            getRow(player.position) * CELL_SIZE + CELL_SIZE / 4 - CELL_SIZE / 4,
+            CELL_SIZE,
+            CELL_SIZE
+        };
+        SDL_RenderCopy(renderer, playerTextures[index], NULL, &rect);
     }
-
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-    for (int i = 0; i < 9; i++) {
-        SDL_RenderDrawLine(renderer, getCol(ladders[i]) * CELL_SIZE + CELL_SIZE / 2, getRow(ladders[i]) * CELL_SIZE + CELL_SIZE / 2,
-                           getCol(ladderEnds[i]) * CELL_SIZE + CELL_SIZE / 2, getRow(ladderEnds[i]) * CELL_SIZE + CELL_SIZE / 2);
-    }
-}
-
-void drawPlayer(SDL_Renderer *renderer, Player player) {
-    SDL_Rect rect = {getCol(player.position) * CELL_SIZE, getRow(player.position) * CELL_SIZE, CELL_SIZE, CELL_SIZE};
-    SDL_SetRenderDrawColor(renderer, player.color.r, player.color.g, player.color.b, 255);
-    SDL_RenderFillRect(renderer, &rect);
 }
 
 void drawDice(SDL_Renderer *renderer) {
-    SDL_Rect diceRect = {SCREEN_HEIGHT + 20, 50, 80, 80};
+    SDL_Rect diceRect = {20, 50, 80, 80};
     if (diceTextures[lastRoll - 1]) {
         SDL_RenderCopy(renderer, diceTextures[lastRoll - 1], NULL, &diceRect);
+    }
+}
+
+void renderText(SDL_Renderer* renderer, const std::string& text, int x, int y) {
+    SDL_Color color = {255, 255, 255, 255};
+    SDL_Surface* surface = TTF_RenderText_Solid(font, text.c_str(), color);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect textRect = {x, y, surface->w, surface->h};
+    SDL_RenderCopy(renderer, texture, NULL, &textRect);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+void checkSnakesAndLadders(Player& player) {
+    int snakes[] = {35,39,44,47,57,58,60};
+    int snakeEnds[] = {3,4,24,34,40,45,46};
+    int ladders[] = {5,6,8,15,19,23,28,42,43,50};
+    int ladderEnds[] = {21,11,24,31,36,40,38,59,54,63};
+
+    for (int i = 0; i < 7; i++) {
+        if (player.position == snakes[i]) {
+            player.position = snakeEnds[i];
+            return;
+        }
+    }
+    for (int i = 0; i < 10; i++) {
+        if (player.position == ladders[i]) {
+            player.position = ladderEnds[i];
+            return;
+        }
     }
 }
 
@@ -115,48 +113,83 @@ int main(int argc, char *argv[]) {
 
     SDL_Window *window = SDL_CreateWindow("Snakes and Ladders", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    font = TTF_OpenFont("arial.ttf", 24);
 
     srand(time(0));
-    Player player1 = {1, {255, 0, 0}};
-    Player player2 = {1, {0, 0, 255}};
+    Player player1 = {1};
+    Player player2 = {1};
 
-    // Load hình ảnh xúc xắc
+    boardTexture = IMG_LoadTexture(renderer, "image.png");
+    backgroundTexture = IMG_LoadTexture(renderer, "background.png");
+    playerTextures[0] = IMG_LoadTexture(renderer, "player1.png");
+    playerTextures[1] = IMG_LoadTexture(renderer, "player2.png");
+
     for (int i = 0; i < 6; i++) {
         std::string filePath = "images/dice_" + std::to_string(i + 1) + ".png";
         diceTextures[i] = IMG_LoadTexture(renderer, filePath.c_str());
-        if (!diceTextures[i]) {
-            std::cerr << "Error loading " << filePath << ": " << IMG_GetError() << std::endl;
-        }
     }
 
     bool quit = false;
     SDL_Event e;
     int turn = 1;
+    int targetPos = 1;
+    bool isMoving = false;
+    int currentRoll = 0;
 
     while (!quit) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) quit = true;
-            else if (!gameWon && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
-                int roll = rollDice();
-                movePlayer(turn == 1 ? player1 : player2, roll, turn == 1 ? "Player 1" : "Player 2");
-                if (!gameWon && roll != 6) turn = 3 - turn;
+            else if (!gameWon && !isMoving && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
+                currentRoll = rollDice();
+                Player& currentPlayer = (turn == 1 ? player1 : player2);
+                targetPos = currentPlayer.position + currentRoll;
+                if (targetPos > 64) targetPos = 64;
+                isMoving = true;
+            }
+        }
+
+        if (isMoving) {
+            Player& currentPlayer = (turn == 1 ? player1 : player2);
+            if (currentPlayer.position < targetPos) {
+                currentPlayer.position++;
+                SDL_Delay(150);
+            } else {
+                checkSnakesAndLadders(currentPlayer);
+                if (currentPlayer.position == 64) {
+                    gameWon = true;
+                    winner = (turn == 1 ? "Player 1" : "Player 2") + std::string(" Wins!");
+                }
+                if (!gameWon && currentRoll != 6) {
+                    turn = 3 - turn;
+                }
+                isMoving = false;
             }
         }
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
+        drawBackground(renderer);
         drawBoard(renderer);
-        drawSnakesAndLadders(renderer);
         drawDice(renderer);
-        drawPlayer(renderer, player1);
-        drawPlayer(renderer, player2);
+        drawPlayer(renderer, player1, 0);
+        drawPlayer(renderer, player2, 1);
+
+        if (gameWon) {
+            renderText(renderer, winner, SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 50);
+        }
+
         SDL_RenderPresent(renderer);
     }
 
-    for (auto &tex : diceTextures) SDL_DestroyTexture(tex);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    IMG_Quit();
+    for (int i = 0; i < 6; i++) {
+        SDL_DestroyTexture(diceTextures[i]);
+    }
+    SDL_DestroyTexture(playerTextures[0]);
+    SDL_DestroyTexture(playerTextures[1]);
+    SDL_DestroyTexture(boardTexture);
+    SDL_DestroyTexture(backgroundTexture);
+    TTF_CloseFont(font);
+    TTF_Quit();
     SDL_Quit();
     return 0;
 }
