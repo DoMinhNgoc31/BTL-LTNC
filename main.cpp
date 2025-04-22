@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
@@ -15,15 +16,16 @@ struct Player {
     int position;
 };
 
-int lastRoll = 1;
-bool gameWon = false;
-std::string winner = "";
-
 SDL_Texture* diceTextures[6] = {nullptr};
 SDL_Texture* boardTexture = nullptr;
 SDL_Texture* backgroundTexture = nullptr;
 SDL_Texture* playerTextures[2] = {nullptr};
 TTF_Font* font = nullptr;
+Mix_Music* bgMusic = nullptr;
+
+int lastRoll = 1;
+bool gameWon = false;
+std::string winner = "";
 
 int rollDice() {
     lastRoll = rand() % 6 + 1;
@@ -106,16 +108,51 @@ void checkSnakesAndLadders(Player& player) {
     }
 }
 
+int showMenu(SDL_Renderer* renderer) {
+    bool inMenu = true;
+    SDL_Event e;
+    int selected = 0;
+
+    while (inMenu) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) return -1;
+            if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_UP:
+                    case SDLK_DOWN:
+                        selected = 1 - selected;
+                        break;
+                    case SDLK_RETURN:
+                        return selected;
+                }
+            }
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        renderText(renderer, "Snakes and Ladders", SCREEN_WIDTH / 2 - 150, 100);
+        renderText(renderer, selected == 0 ? "> Start Game <" : "Start Game", SCREEN_WIDTH / 2 - 100, 250);
+        renderText(renderer, selected == 1 ? "> Quit <" : "Quit", SCREEN_WIDTH / 2 - 100, 300);
+
+        SDL_RenderPresent(renderer);
+    }
+    return -1;
+}
+
 int main(int argc, char *argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     IMG_Init(IMG_INIT_PNG);
     TTF_Init();
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        std::cout << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    }
 
     SDL_Window *window = SDL_CreateWindow("Snakes and Ladders", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     font = TTF_OpenFont("arial.ttf", 24);
-
     srand(time(0));
+
     Player player1 = {1};
     Player player2 = {1};
 
@@ -127,6 +164,25 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < 6; i++) {
         std::string filePath = "images/dice_" + std::to_string(i + 1) + ".png";
         diceTextures[i] = IMG_LoadTexture(renderer, filePath.c_str());
+    }
+
+    bgMusic = Mix_LoadMUS("music.mp3");
+    if (!bgMusic) {
+        std::cout << "Failed to load background music! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    } else {
+        Mix_PlayMusic(bgMusic, -1);
+    }
+
+    int menuChoice = showMenu(renderer);
+    if (menuChoice == -1 || menuChoice == 1) {
+        Mix_FreeMusic(bgMusic);
+        TTF_CloseFont(font);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        Mix_CloseAudio();
+        TTF_Quit();
+        SDL_Quit();
+        return 0;
     }
 
     bool quit = false;
@@ -181,13 +237,15 @@ int main(int argc, char *argv[]) {
         SDL_RenderPresent(renderer);
     }
 
-    for (int i = 0; i < 6; i++) {
-        SDL_DestroyTexture(diceTextures[i]);
-    }
+    for (int i = 0; i < 6; i++) SDL_DestroyTexture(diceTextures[i]);
     SDL_DestroyTexture(playerTextures[0]);
     SDL_DestroyTexture(playerTextures[1]);
     SDL_DestroyTexture(boardTexture);
     SDL_DestroyTexture(backgroundTexture);
+
+    Mix_FreeMusic(bgMusic);
+    Mix_CloseAudio();
+
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();
