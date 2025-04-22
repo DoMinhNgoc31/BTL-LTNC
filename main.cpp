@@ -18,7 +18,7 @@ struct Player {
 
 SDL_Texture* diceTextures[6] = {nullptr};
 SDL_Texture* boardTexture = nullptr;
-SDL_Texture* backgroundTexture = nullptr;
+SDL_Texture* backgroundTexture = nullptr; // Background cho menu
 SDL_Texture* playerTextures[2] = {nullptr};
 TTF_Font* font = nullptr;
 Mix_Music* bgMusic = nullptr;
@@ -94,15 +94,21 @@ void checkSnakesAndLadders(Player& player) {
     int ladders[] = {5,6,8,15,19,23,28,42,43,50};
     int ladderEnds[] = {21,11,24,31,36,40,38,59,54,63};
 
+    // Xử lý rắn
     for (int i = 0; i < 7; i++) {
         if (player.position == snakes[i]) {
+            // Di chuyển xuống dưới rắn trước
             player.position = snakeEnds[i];
+            SDL_Delay(500); // Thêm delay để dừng lại ở dưới rắn trước khi di chuyển tiếp
             return;
         }
     }
+    // Xử lý thang
     for (int i = 0; i < 10; i++) {
         if (player.position == ladders[i]) {
+            // Di chuyển xuống dưới cầu thang trước
             player.position = ladderEnds[i];
+            SDL_Delay(500); // Thêm delay để dừng lại ở dưới thang trước khi đi lên
             return;
         }
     }
@@ -128,14 +134,21 @@ int showMenu(SDL_Renderer* renderer) {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
+        // Vẽ background cho menu
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);  // Set màu đen cho nền (bạn có thể thay đổi nếu cần)
+        SDL_RenderClear(renderer);  // Xóa màn hình
 
+        if (backgroundTexture) { // Kiểm tra nếu có background texture
+            SDL_Rect bgRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            SDL_RenderCopy(renderer, backgroundTexture, NULL, &bgRect); // Vẽ background
+        }
+
+        // Vẽ các lựa chọn menu
         renderText(renderer, "Snakes and Ladders", SCREEN_WIDTH / 2 - 150, 100);
         renderText(renderer, selected == 0 ? "> Start Game <" : "Start Game", SCREEN_WIDTH / 2 - 100, 250);
         renderText(renderer, selected == 1 ? "> Quit <" : "Quit", SCREEN_WIDTH / 2 - 100, 300);
 
-        SDL_RenderPresent(renderer);
+        SDL_RenderPresent(renderer);  // Cập nhật màn hình
     }
     return -1;
 }
@@ -157,7 +170,7 @@ int main(int argc, char *argv[]) {
     Player player2 = {1};
 
     boardTexture = IMG_LoadTexture(renderer, "image.png");
-    backgroundTexture = IMG_LoadTexture(renderer, "background.png");
+    backgroundTexture = IMG_LoadTexture(renderer, "background.png"); // Tải background cho menu
     playerTextures[0] = IMG_LoadTexture(renderer, "player1.png");
     playerTextures[1] = IMG_LoadTexture(renderer, "player2.png");
 
@@ -199,24 +212,34 @@ int main(int argc, char *argv[]) {
                 currentRoll = rollDice();
                 Player& currentPlayer = (turn == 1 ? player1 : player2);
                 targetPos = currentPlayer.position + currentRoll;
-                if (targetPos > 64) targetPos = 64;
+
+                // Kiểm tra nếu vượt quá ô 64, giữ nguyên vị trí
+                if (targetPos > 64) {
+                    targetPos = currentPlayer.position; // Giữ nguyên vị trí nếu vượt quá ô 64
+                }
                 isMoving = true;
             }
         }
 
         if (isMoving) {
             Player& currentPlayer = (turn == 1 ? player1 : player2);
+
+            // Di chuyển theo từng bước cho đến khi đến đúng ô đích
             if (currentPlayer.position < targetPos) {
                 currentPlayer.position++;
-                SDL_Delay(150);
+                SDL_Delay(500); // Điều chỉnh độ trễ nếu muốn di chuyển chậm
+            } else if (currentPlayer.position > targetPos) {
+                currentPlayer.position--;
+                SDL_Delay(500); // Điều chỉnh độ trễ nếu muốn di chuyển chậm
             } else {
+                // Khi đến đúng ô đích
                 checkSnakesAndLadders(currentPlayer);
                 if (currentPlayer.position == 64) {
                     gameWon = true;
                     winner = (turn == 1 ? "Player 1" : "Player 2") + std::string(" Wins!");
                 }
                 if (!gameWon && currentRoll != 6) {
-                    turn = 3 - turn;
+                    turn = 3 - turn;  // Chuyển lượt
                 }
                 isMoving = false;
             }
@@ -224,16 +247,22 @@ int main(int argc, char *argv[]) {
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        drawBackground(renderer);
+        drawBackground(renderer); // Vẽ background trong game
         drawBoard(renderer);
         drawDice(renderer);
         drawPlayer(renderer, player1, 0);
         drawPlayer(renderer, player2, 1);
 
         if (gameWon) {
-            renderText(renderer, winner, SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 50);
-        }
+    renderText(renderer, winner, SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 50);
+} else {
+    // Hiển thị chữ "Turn:"
+    renderText(renderer, "Move:", 20, 150);
 
+    // Vẽ hình ảnh người chơi hiện tại kế bên chữ "Turn:"
+    SDL_Rect turnPlayerRect = {90, 135, 45, 45}; // vị trí và kích thước
+    SDL_RenderCopy(renderer, playerTextures[turn - 1], NULL, &turnPlayerRect);
+}
         SDL_RenderPresent(renderer);
     }
 
@@ -241,7 +270,7 @@ int main(int argc, char *argv[]) {
     SDL_DestroyTexture(playerTextures[0]);
     SDL_DestroyTexture(playerTextures[1]);
     SDL_DestroyTexture(boardTexture);
-    SDL_DestroyTexture(backgroundTexture);
+    SDL_DestroyTexture(backgroundTexture); // Giải phóng texture của background
 
     Mix_FreeMusic(bgMusic);
     Mix_CloseAudio();
