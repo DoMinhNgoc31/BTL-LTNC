@@ -23,6 +23,7 @@ SDL_Texture* diceTextures[6] = {nullptr};
 SDL_Texture* backgroundTexture = nullptr;      // Background cho menu
 SDL_Texture* gameBackgroundTexture = nullptr;  // Background trong game (trochoi)
 SDL_Texture* playerTextures[2] = {nullptr};
+SDL_Texture* winTextures[2] = {nullptr};
 TTF_Font* font = nullptr;
 Mix_Music* bgMusic = nullptr;
 
@@ -68,7 +69,7 @@ void drawPlayer(SDL_Renderer *renderer, Player player, int index) {
 }
 
 void drawDice(SDL_Renderer *renderer) {
-    SDL_Rect diceRect = {20, 50, 80, 80};
+    SDL_Rect diceRect = {37, 50, 80, 80};
     if (diceTextures[lastRoll - 1]) {
         SDL_RenderCopy(renderer, diceTextures[lastRoll - 1], NULL, &diceRect);
     }
@@ -168,6 +169,9 @@ int main(int argc, char *argv[]) {
     gameBackgroundTexture = IMG_LoadTexture(renderer, "trochoi.png");
     playerTextures[0] = IMG_LoadTexture(renderer, "player1.png");
     playerTextures[1] = IMG_LoadTexture(renderer, "player2.png");
+    winTextures[0] = IMG_LoadTexture(renderer, "win1.png");
+    winTextures[1] = IMG_LoadTexture(renderer, "win2.png");
+
 
     for (int i = 0; i < 6; i++) {
         std::string filePath = "images/dice_" + std::to_string(i + 1) + ".png";
@@ -233,7 +237,11 @@ int main(int argc, char *argv[]) {
         drawPlayer(renderer, player2, 1);
 
         if (gameWon) {
-            renderText(renderer, winner, SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 50);
+            int winnerIndex = (turn == 1 ? 0 : 1);  // 0: player1, 1: player2
+            if (winTextures[winnerIndex]) {
+                    SDL_Rect winRect = {SCREEN_WIDTH / 2 - 550/2, SCREEN_HEIGHT / 2 - 360/2, 550, 310};
+                    SDL_RenderCopy(renderer, winTextures[winnerIndex], nullptr, &winRect);
+                }
         } else {
             renderText(renderer, "Move:", 20, 150);
             SDL_Rect turnPlayerRect = {90, 135, 45, 45};
