@@ -29,10 +29,14 @@ TTF_Font* font = nullptr;
 Mix_Music* bgMusic = nullptr;
 SDL_Texture* soundOnTexture = nullptr;
 SDL_Texture* soundOffTexture = nullptr;
-bool isMuted = false;
+SDL_Texture* endTexture = nullptr;
+SDL_Texture* homeButtonTexture = nullptr;
+SDL_Texture* replayButtonTexture = nullptr;
+
 
 int lastRoll = 1;
 bool gameWon = false;
+bool isMuted = false;
 string winner = "";
 
 int rollDice() {
@@ -247,7 +251,11 @@ int main(int argc, char *argv[]) {
     howtoTexture = IMG_LoadTexture(renderer, "howto.png");
     soundOnTexture = IMG_LoadTexture(renderer, "sound_on.png");
     soundOffTexture = IMG_LoadTexture(renderer, "sound_off.png");
-     // Hiển thị nút âm thanh góc trên bên phải
+    endTexture = IMG_LoadTexture(renderer, "end.png");
+    homeButtonTexture = IMG_LoadTexture(renderer, "home_button.png");
+    replayButtonTexture = IMG_LoadTexture(renderer, "replay_button.png");
+
+
     SDL_Rect soundRect = {SCREEN_WIDTH - 80, 20, 50, 50};
     SDL_RenderCopy(renderer, isMuted ? soundOffTexture : soundOnTexture, NULL, &soundRect);
 
@@ -282,18 +290,44 @@ int main(int argc, char *argv[]) {
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 int x = e.button.x;
                 int y = e.button.y;
-                SDL_Rect soundRect = {40,SCREEN_HEIGHT- 120, 80, 80};  // Cùng vị trí với nút vẽ
 
+                SDL_Rect soundRect = {40, SCREEN_HEIGHT - 120, 80, 80};
+
+                // Xử lý nút âm thanh
                 if (x >= soundRect.x && x <= soundRect.x + soundRect.w &&
                     y >= soundRect.y && y <= soundRect.y + soundRect.h) {
                     isMuted = !isMuted;
-                    if (isMuted) {
-                        Mix_PauseMusic();
-                    } else {
-                        Mix_ResumeMusic();
+                    if (isMuted) Mix_PauseMusic();
+                    else Mix_ResumeMusic();
+                }
+
+                // Nếu thắng, kiểm tra click nút Home hoặc Replay
+                if (gameWon) {
+                    SDL_Rect homeRect = {SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 100, 100, 100};
+                    SDL_Rect replayRect = {SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 2 + 100, 100, 100};
+
+                    if (x >= homeRect.x && x <= homeRect.x + homeRect.w &&
+                        y >= homeRect.y && y <= homeRect.y + homeRect.h) {
+                        // Quay lại menu
+                        if (showMenu(renderer) != 0) quit = true;
+                        // Reset game trạng thái
+                        player1.position = 1;
+                        player2.position = 1;
+                        turn = 1;
+                        gameWon = false;
+                    }
+
+                    if (x >= replayRect.x && x <= replayRect.x + replayRect.w &&
+                        y >= replayRect.y && y <= replayRect.y + replayRect.h) {
+                        // Chơi lại
+                        player1.position = 1;
+                        player2.position = 1;
+                        turn = 1;
+                        gameWon = false;
                     }
                 }
             }
+
 
             if (e.type == SDL_QUIT) quit = true;
             else if (!gameWon && !isMoving && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
@@ -331,11 +365,20 @@ int main(int argc, char *argv[]) {
         drawPlayer(renderer, player2, 1);
 
         if (gameWon) {
+            if (endTexture) {
+                SDL_Rect endRect = {SCREEN_WIDTH / 2 - 600/2, SCREEN_HEIGHT / 2 - 600/2, 600, 600};
+                SDL_RenderCopy(renderer, endTexture, nullptr, &endRect);
+            }
+
             int winnerIndex = (turn == 1 ? 0 : 1);
             if (winTextures[winnerIndex]) {
-                SDL_Rect winRect = {SCREEN_WIDTH / 2 - 825/2, SCREEN_HEIGHT / 2 - 400/2, 825, 465};
+                SDL_Rect winRect = {SCREEN_WIDTH / 2 - 600/2, SCREEN_HEIGHT / 2 - 550/2, 600, 340};
                 SDL_RenderCopy(renderer, winTextures[winnerIndex], nullptr, &winRect);
             }
+            SDL_Rect homeRect = {SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 100, 100, 100};
+            SDL_Rect replayRect = {SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 2 + 100, 100, 100};
+            SDL_RenderCopy(renderer, homeButtonTexture, NULL, &homeRect);
+            SDL_RenderCopy(renderer, replayButtonTexture, NULL, &replayRect);
         } else {
             renderText(renderer, "Move:", 20, 150);
             SDL_Rect turnPlayerRect = {90, 135, 45, 45};
