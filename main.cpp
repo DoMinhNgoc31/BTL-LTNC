@@ -6,23 +6,14 @@
 #include <cstdlib>
 #include <ctime>
 #include <string>
+#include "constants.h"
+#include "player.h"
+
 using namespace std;
 
-const int SCREEN_WIDTH = 900;
-const int SCREEN_HEIGHT = 700;
-const int GRID_SIZE = 8;
-const int CELL_SIZE = (SCREEN_HEIGHT - 30) / GRID_SIZE;
-const int BOARD_START_X = 170;
-const int BOARD_START_Y = 15;
-
-struct Player {
-    int position;
-    int character;
-};
-
 SDL_Texture* diceTextures[6] = {nullptr};
-SDL_Texture* backgroundTexture = nullptr;      // Background cho menu
-SDL_Texture* gameBackgroundTexture = nullptr;  // Background trong game
+SDL_Texture* backgroundTexture = nullptr;
+SDL_Texture* gameBackgroundTexture = nullptr;
 SDL_Texture* onePlayerTexture = nullptr;
 SDL_Texture* twoPlayersTexture = nullptr;
 SDL_Texture* threePlayerTexture = nullptr;
@@ -43,12 +34,10 @@ Mix_Chunk* jumpSound = Mix_LoadWAV("jump.mp3");
 Mix_Chunk* upSound = Mix_LoadWAV("up.mp3");
 Mix_Chunk* downSound = Mix_LoadWAV("down.mp3");
 
-
 int lastRoll = 1;
 bool gameWon = false;
 bool isMuted = false;
 string winner = "";
-
 
 int rollDice() {
     lastRoll = rand() % 6 + 1;
@@ -75,7 +64,6 @@ void drawPlayer(SDL_Renderer *renderer, Player player, int index) {
     if (player.position > 0 && playerTextures[index]) {
         int row = getRow(player.position);
         int col = getCol(player.position);
-
         int size = CELL_SIZE;
         SDL_Rect rect = {
             BOARD_START_X + col * CELL_SIZE + (CELL_SIZE - size) / 2,
@@ -96,22 +84,17 @@ void drawDice(SDL_Renderer *renderer) {
 
 int rollDiceAnimation(SDL_Renderer* renderer, Player& player1, Player& player2) {
     int finalRoll = rand() % 6 + 1;
-
     SDL_Rect diceRect = {37, 50, 80, 80};
-    SDL_Rect soundRect = {40, SCREEN_HEIGHT - 120, 80, 80}; // Vị trí nút âm thanh
-
+    SDL_Rect soundRect = {40, SCREEN_HEIGHT - 120, 80, 80};
     for (int i = 0; i < 14; i++) {
     int tempRoll = rand() % 6 + 1;
     SDL_RenderCopy(renderer, diceTextures[tempRoll - 1], NULL, &diceRect);
     SDL_RenderPresent(renderer);
     SDL_Delay(50);
 }
-
-    // Lần cuối: vẽ rõ mặt xúc xắc thật sự
     SDL_RenderCopy(renderer, diceTextures[finalRoll - 1], NULL, &diceRect);
     SDL_RenderPresent(renderer);
-    SDL_Delay(200);  // Cho người chơi kịp thấy mặt xúc xắc cuối
-
+    SDL_Delay(200);
     lastRoll = finalRoll;
     return finalRoll;
 }
@@ -201,11 +184,9 @@ int showCharacterSelection(SDL_Renderer* renderer, int playerNum, bool takenChar
     while (true) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) return -1;
-
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 int x = e.button.x;
                 int y = e.button.y;
-
                 for (int i = 0; i < 3; ++i) {
                     if (takenChars[i]) continue;
                     if (x >= charRects[i].x && x <= charRects[i].x + charRects[i].w &&
@@ -226,18 +207,14 @@ int showCharacterSelection(SDL_Renderer* renderer, int playerNum, bool takenChar
             if (!takenChars[i] && localTextures[i])
                 SDL_RenderCopy(renderer, localTextures[i], NULL, &charRects[i]);
         }
-
         SDL_RenderPresent(renderer);
     }
-
     return -1;
 }
-
 
 int showMenu(SDL_Renderer* renderer) {
     bool inMenu = true;
     SDL_Event e;
-
     SDL_Texture* menuBg = IMG_LoadTexture(renderer, "menu_bg.png");
     SDL_Texture* playBtn = IMG_LoadTexture(renderer, "play_button.png");
     SDL_Texture* howtoBtn = IMG_LoadTexture(renderer, "howto_button.png");
@@ -253,12 +230,10 @@ int showMenu(SDL_Renderer* renderer) {
     while (inMenu) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) return -1;
-
             if (e.type == SDL_MOUSEBUTTONDOWN) {
                 int x = e.button.x;
                 int y = e.button.y;
 
-                // Xử lý nút âm thanh
                 if (x >= soundRect.x && x <= soundRect.x + soundRect.w &&
                     y >= soundRect.y && y <= soundRect.y + soundRect.h) {
                     isMuted = !isMuted;
@@ -266,7 +241,6 @@ int showMenu(SDL_Renderer* renderer) {
                     else Mix_ResumeMusic();
                 }
 
-                // Xử lý nút Play
                 if (x >= playRect.x && x <= playRect.x + playRect.w &&
                     y >= playRect.y && y <= playRect.y + playRect.h) {
                     SDL_DestroyTexture(menuBg);
@@ -276,11 +250,9 @@ int showMenu(SDL_Renderer* renderer) {
                     return 0;
                 }
 
-                // Xử lý nút Howto
                 if (x >= howtoRect.x && x <= howtoRect.x + howtoRect.w &&
                     y >= howtoRect.y && y <= howtoRect.y + howtoRect.h) {
 
-                    // Hiển thị màn hình hướng dẫn
                     bool inHowto = true;
                     SDL_Rect howtoDestRect = {SCREEN_WIDTH / 2 - (633 / 2), 240, 633, 424};
                     SDL_Rect backRect = {120, 230, 84, 84};
@@ -293,13 +265,11 @@ int showMenu(SDL_Renderer* renderer) {
                                 int mx = e.button.x;
                                 int my = e.button.y;
 
-                                // Nút back
                                 if (mx >= backRect.x && mx <= backRect.x + backRect.w &&
                                     my >= backRect.y && my <= backRect.y + backRect.h) {
                                     inHowto = false;
                                 }
 
-                                // Nút âm thanh (trong màn hình hướng dẫn)
                                 if (mx >= soundRect.x && mx <= soundRect.x + soundRect.w &&
                                     my >= soundRect.y && my <= soundRect.y + soundRect.h) {
                                     isMuted = !isMuted;
@@ -319,15 +289,12 @@ int showMenu(SDL_Renderer* renderer) {
                         if (howtoTexture) SDL_RenderCopy(renderer, howtoTexture, NULL, &howtoDestRect);
                         if (backBtn) SDL_RenderCopy(renderer, backBtn, NULL, &backRect);
 
-                        // Vẽ nút âm thanh
                         SDL_RenderCopy(renderer, isMuted ? soundOffTexture : soundOnTexture, NULL, &soundRect);
-
                         SDL_RenderPresent(renderer);
                     }
                 }
             }
         }
-
         SDL_RenderClear(renderer);
         drawBackground(renderer, backgroundTexture);
         if (menuBg) SDL_RenderCopy(renderer, menuBg, NULL, &menuBgRect);
@@ -382,7 +349,6 @@ int main(int argc, char *argv[]) {
     Mix_Chunk* upSound = Mix_LoadWAV("up.mp3");
     Mix_Chunk* downSound = Mix_LoadWAV("down.mp3");
 
-
     SDL_Rect soundRect = {SCREEN_WIDTH - 80, 20, 50, 50};
     SDL_RenderCopy(renderer, isMuted ? soundOffTexture : soundOnTexture, NULL, &soundRect);
 
@@ -406,7 +372,6 @@ int main(int argc, char *argv[]) {
     }
     int numPlayers = showGameModeSelection(renderer);
     if (numPlayers == 0) {
-        // Nếu người dùng thoát thì cleanup
         Mix_CloseAudio();
         TTF_CloseFont(font);
         SDL_DestroyRenderer(renderer);
@@ -415,24 +380,21 @@ int main(int argc, char *argv[]) {
         SDL_Quit();
         return 0;
     }
-    bool takenChars[4] = {false, false, false, false};  // Đánh dấu nhân vật đã chọn
+    bool takenChars[4] = {false, false, false, false};
 
-    // Chọn cho Player 1
     int selectedChar1 = showCharacterSelection(renderer, 1, takenChars, player1Bg);
     if (selectedChar1 == -1) return 0;
     player1.character = selectedChar1;
     takenChars[selectedChar1] = true;
 
-    // Chọn cho Player 2 nếu có
     if (numPlayers == 2) {
         int selectedChar2 = showCharacterSelection(renderer, 2, takenChars, player2Bg);
         if (selectedChar2 == -1) return 0;
         player2.character = selectedChar2;
         takenChars[selectedChar2] = true;
     } else {
-        player2.character = 3;  // Nếu chơi 1P, gán mặc định
+        player2.character = 3;
     }
-
 
     bool quit = false;
     SDL_Event e;
@@ -449,7 +411,6 @@ int main(int argc, char *argv[]) {
 
                 SDL_Rect soundRect = {40, SCREEN_HEIGHT - 120, 80, 80};
 
-                // Xử lý nút âm thanh
                 if (x >= soundRect.x && x <= soundRect.x + soundRect.w &&
                     y >= soundRect.y && y <= soundRect.y + soundRect.h) {
                     isMuted = !isMuted;
@@ -457,7 +418,6 @@ int main(int argc, char *argv[]) {
                     else Mix_ResumeMusic();
                 }
 
-                // Nếu thắng, kiểm tra click nút Home hoặc Replay
                 if (gameWon) {
                     SDL_Rect homeRect = {SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 100, 100, 100};
                     SDL_Rect replayRect = {SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 2 + 100, 100, 100};
@@ -465,18 +425,14 @@ int main(int argc, char *argv[]) {
                     if (x >= homeRect.x && x <= homeRect.x + homeRect.w &&
                         y >= homeRect.y && y <= homeRect.y + homeRect.h) {
 
-                        // Hiện lại menu
                         if (showMenu(renderer) != 0) {
                             quit = true;
                         } else {
-                            // Chọn lại chế độ chơi
                             numPlayers = showGameModeSelection(renderer);
                             if (numPlayers == 0) {
                                 quit = true;
                             } else {
-                                // Chọn lại nhân vật
                                 bool takenChars[4] = {false, false, false, false};
-
                                 int selectedChar1 = showCharacterSelection(renderer, 1, takenChars, player1Bg);
                                 if (selectedChar1 == -1) quit = true;
                                 else {
@@ -493,8 +449,6 @@ int main(int argc, char *argv[]) {
                                     } else {
                                         player2.character = 3;
                                     }
-
-                                    // Reset trạng thái
                                     player1.position = 1;
                                     player2.position = 1;
                                     turn = 1;
@@ -504,11 +458,9 @@ int main(int argc, char *argv[]) {
                             }
                         }
                     }
-
-
                     if (x >= replayRect.x && x <= replayRect.x + replayRect.w &&
                         y >= replayRect.y && y <= replayRect.y + replayRect.h) {
-                        // Chơi lại
+
                         player1.position = 1;
                         player2.position = 1;
                         turn = 1;
@@ -530,18 +482,16 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-
         }
 
                 if (!gameWon && numPlayers == 1 && turn == 2 && !isMoving) {
-                SDL_Delay(800); // delay nhẹ để người chơi thấy máy chuẩn bị roll
+                SDL_Delay(800); // delay nhẹ để người chơi thấy máy
                 currentRoll = rollDiceAnimation(renderer, player1, player2);
                 Player& currentPlayer = player2;
                 targetPos = currentPlayer.position + currentRoll;
                 if (targetPos > 64) targetPos = currentPlayer.position;
                 isMoving = true;
             }
-
 
         if (isMoving) {
             Player& currentPlayer = (turn == 1 ? player1 : player2);
@@ -586,14 +536,11 @@ int main(int argc, char *argv[]) {
             SDL_Rect turnPlayerRect = {90, 135, 45, 45};
             int currentCharacter = (turn == 1 ? player1.character : player2.character);
             SDL_RenderCopy(renderer, playerTextures[currentCharacter], NULL, &turnPlayerRect);
-
         }
-        // Hiển thị nút âm thanh góc trên bên phải
+
         SDL_Rect soundRect = {40,SCREEN_HEIGHT- 120, 80, 80};
         SDL_RenderCopy(renderer, isMuted ? soundOffTexture : soundOnTexture, NULL, &soundRect);
-
         SDL_RenderPresent(renderer);
-
     }
 
     for (int i = 0; i < 6; i++) SDL_DestroyTexture(diceTextures[i]);
@@ -604,7 +551,6 @@ int main(int argc, char *argv[]) {
     SDL_DestroyTexture(howtoTexture);
     SDL_DestroyTexture(soundOnTexture);
     SDL_DestroyTexture(soundOffTexture);
-
 
     Mix_FreeMusic(bgMusic);
     Mix_CloseAudio();
