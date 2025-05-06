@@ -17,14 +17,21 @@ const int BOARD_START_Y = 15;
 
 struct Player {
     int position;
+    int character;
 };
 
 SDL_Texture* diceTextures[6] = {nullptr};
 SDL_Texture* backgroundTexture = nullptr;      // Background cho menu
 SDL_Texture* gameBackgroundTexture = nullptr;  // Background trong game
-SDL_Texture* playerTextures[2] = {nullptr};
-SDL_Texture* winTextures[2] = {nullptr};
-SDL_Texture* howtoTexture = nullptr;            // Hình hướng dẫn
+SDL_Texture* onePlayerTexture = nullptr;
+SDL_Texture* twoPlayersTexture = nullptr;
+SDL_Texture* threePlayerTexture = nullptr;
+SDL_Texture* fourPlayersTexture = nullptr;
+SDL_Texture* playerTextures[4] = {nullptr};
+SDL_Texture* winTextures[4] = {nullptr};
+SDL_Texture* howtoTexture = nullptr;
+SDL_Texture* player1Bg = nullptr;
+SDL_Texture* player2Bg = nullptr;
 TTF_Font* font = nullptr;
 Mix_Music* bgMusic = nullptr;
 SDL_Texture* soundOnTexture = nullptr;
@@ -32,12 +39,16 @@ SDL_Texture* soundOffTexture = nullptr;
 SDL_Texture* endTexture = nullptr;
 SDL_Texture* homeButtonTexture = nullptr;
 SDL_Texture* replayButtonTexture = nullptr;
+Mix_Chunk* jumpSound = Mix_LoadWAV("jump.mp3");
+Mix_Chunk* upSound = Mix_LoadWAV("up.mp3");
+Mix_Chunk* downSound = Mix_LoadWAV("down.mp3");
 
 
 int lastRoll = 1;
 bool gameWon = false;
 bool isMuted = false;
 string winner = "";
+
 
 int rollDice() {
     lastRoll = rand() % 6 + 1;
@@ -72,7 +83,7 @@ void drawPlayer(SDL_Renderer *renderer, Player player, int index) {
             size,
             size
         };
-        SDL_RenderCopy(renderer, playerTextures[index], NULL, &rect);
+        SDL_RenderCopy(renderer, playerTextures[player.character], NULL, &rect);
     }
 }
 
@@ -81,6 +92,28 @@ void drawDice(SDL_Renderer *renderer) {
     if (diceTextures[lastRoll - 1]) {
         SDL_RenderCopy(renderer, diceTextures[lastRoll - 1], NULL, &diceRect);
     }
+}
+
+int rollDiceAnimation(SDL_Renderer* renderer, Player& player1, Player& player2) {
+    int finalRoll = rand() % 6 + 1;
+
+    SDL_Rect diceRect = {37, 50, 80, 80};
+    SDL_Rect soundRect = {40, SCREEN_HEIGHT - 120, 80, 80}; // Vị trí nút âm thanh
+
+    for (int i = 0; i < 14; i++) {
+    int tempRoll = rand() % 6 + 1;
+    SDL_RenderCopy(renderer, diceTextures[tempRoll - 1], NULL, &diceRect);
+    SDL_RenderPresent(renderer);
+    SDL_Delay(50);
+}
+
+    // Lần cuối: vẽ rõ mặt xúc xắc thật sự
+    SDL_RenderCopy(renderer, diceTextures[finalRoll - 1], NULL, &diceRect);
+    SDL_RenderPresent(renderer);
+    SDL_Delay(200);  // Cho người chơi kịp thấy mặt xúc xắc cuối
+
+    lastRoll = finalRoll;
+    return finalRoll;
 }
 
 void renderText(SDL_Renderer* renderer, const string& text, int x, int y) {
@@ -93,7 +126,7 @@ void renderText(SDL_Renderer* renderer, const string& text, int x, int y) {
     SDL_DestroyTexture(texture);
 }
 
-void checkSnakesAndLadders(Player& player) {
+void checkSnakesAndLadders(Player& player, Mix_Chunk* downSound, Mix_Chunk* upSound) {
     int snakes[] = {35,39,44,47,57,58,60};
     int snakeEnds[] = {3,4,24,34,40,45,46};
     int ladders[] = {5,6,8,15,19,23,28,42,43,50};
@@ -101,6 +134,7 @@ void checkSnakesAndLadders(Player& player) {
 
     for (int i = 0; i < 7; i++) {
         if (player.position == snakes[i]) {
+            Mix_PlayChannel(-1, downSound, 0);
             player.position = snakeEnds[i];
             SDL_Delay(500);
             return;
@@ -109,12 +143,96 @@ void checkSnakesAndLadders(Player& player) {
 
     for (int i = 0; i < 10; i++) {
         if (player.position == ladders[i]) {
+            Mix_PlayChannel(-1, upSound, 0);
             player.position = ladderEnds[i];
             SDL_Delay(500);
             return;
         }
     }
 }
+int showGameModeSelection(SDL_Renderer* renderer) {
+    SDL_Texture* modeBg = IMG_LoadTexture(renderer, "mode_select_bg.png");
+    onePlayerTexture = IMG_LoadTexture(renderer, "1player.png");
+    twoPlayersTexture = IMG_LoadTexture(renderer, "2players.png");
+
+    SDL_Rect onePlayerRect = {SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 2 - 15, 332, 88};
+    SDL_Rect twoPlayersRect = {SCREEN_WIDTH / 2 - 215, SCREEN_HEIGHT / 2 + 108, 332, 88};
+    SDL_Rect bgRect = {0, 0, 900, 700};
+
+    SDL_Event e;
+    bool running = true;
+    while (running) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) return -1;
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                int x = e.button.x;
+                int y = e.button.y;
+                if (x >= onePlayerRect.x && x <= onePlayerRect.x + onePlayerRect.w &&
+                    y >= onePlayerRect.y && y <= onePlayerRect.y + onePlayerRect.h) {
+                    return 1;
+                }
+                if (x >= twoPlayersRect.x && x <= twoPlayersRect.x + twoPlayersRect.w &&
+                    y >= twoPlayersRect.y && y <= twoPlayersRect.y + twoPlayersRect.h) {
+                    return 2;
+                }
+            }
+        }
+        if (modeBg) SDL_RenderCopy(renderer, modeBg, NULL, &bgRect);
+        if (onePlayerTexture) SDL_RenderCopy(renderer, onePlayerTexture, NULL, &onePlayerRect);
+        if (twoPlayersTexture) SDL_RenderCopy(renderer, twoPlayersTexture, NULL, &twoPlayersRect);
+        SDL_RenderPresent(renderer);
+    }
+    return -1;
+}
+
+int showCharacterSelection(SDL_Renderer* renderer, int playerNum, bool takenChars[4], SDL_Texture* bgTexture) {
+    SDL_Texture* localTextures[3];
+    localTextures[0] = IMG_LoadTexture(renderer, "char1.png");
+    localTextures[1] = IMG_LoadTexture(renderer, "char2.png");
+    localTextures[2] = IMG_LoadTexture(renderer, "char3.png");
+
+    SDL_Rect charRects[3] = {
+        {SCREEN_WIDTH / 2 - 300, SCREEN_HEIGHT / 2, 200, 200},
+        {SCREEN_WIDTH / 2 - 100,  SCREEN_HEIGHT / 2 + 20, 200, 200},
+        {SCREEN_WIDTH / 2 + 100,  SCREEN_HEIGHT / 2 + 5, 200, 200},
+    };
+
+    SDL_Event e;
+    while (true) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) return -1;
+
+            if (e.type == SDL_MOUSEBUTTONDOWN) {
+                int x = e.button.x;
+                int y = e.button.y;
+
+                for (int i = 0; i < 3; ++i) {
+                    if (takenChars[i]) continue;
+                    if (x >= charRects[i].x && x <= charRects[i].x + charRects[i].w &&
+                        y >= charRects[i].y && y <= charRects[i].y + charRects[i].h) {
+                        for (int j = 0; j < 3; ++j) {
+                            if (localTextures[j]) SDL_DestroyTexture(localTextures[j]);
+                        }
+                        return i;
+                    }
+                }
+            }
+        }
+        SDL_Rect bgRect = {0, 0, 900, 700};  // chỉnh theo kích thước cửa sổ bạn muốn
+        if (bgTexture)
+            SDL_RenderCopy(renderer, bgTexture, NULL, &bgRect);
+
+        for (int i = 0; i < 3; ++i) {
+            if (!takenChars[i] && localTextures[i])
+                SDL_RenderCopy(renderer, localTextures[i], NULL, &charRects[i]);
+        }
+
+        SDL_RenderPresent(renderer);
+    }
+
+    return -1;
+}
+
 
 int showMenu(SDL_Renderer* renderer) {
     bool inMenu = true;
@@ -127,9 +245,9 @@ int showMenu(SDL_Renderer* renderer) {
     soundOnTexture = IMG_LoadTexture(renderer, "sound_on.png");
     soundOffTexture = IMG_LoadTexture(renderer, "sound_off.png");
 
-    SDL_Rect playRect = {SCREEN_WIDTH / 2 - (130 / 2), SCREEN_HEIGHT / 2 - 40, 130, 130};
-    SDL_Rect howtoRect = {SCREEN_WIDTH / 2 - (434 / 2), SCREEN_HEIGHT / 2 + 130, 434, 73};
-    SDL_Rect menuBgRect = {SCREEN_WIDTH / 2 - (709 / 2), 75, 709, 132};
+    SDL_Rect playRect = {SCREEN_WIDTH / 2 - (150 / 2), SCREEN_HEIGHT / 2 - 50, 150, 150};
+    SDL_Rect howtoRect = {SCREEN_WIDTH / 2 - (307 / 2), SCREEN_HEIGHT / 2 + 140, 307, 83};
+    SDL_Rect menuBgRect = {SCREEN_WIDTH / 2 - (709 / 2), 75, 709, 143};
     SDL_Rect soundRect = {40,SCREEN_HEIGHT- 120, 80, 80};  // Dùng chung
 
     while (inMenu) {
@@ -244,16 +362,25 @@ int main(int argc, char *argv[]) {
 
     backgroundTexture = IMG_LoadTexture(renderer, "background.png");
     gameBackgroundTexture = IMG_LoadTexture(renderer, "trochoi.png");
-    playerTextures[0] = IMG_LoadTexture(renderer, "player1.png");
-    playerTextures[1] = IMG_LoadTexture(renderer, "player2.png");
+    playerTextures[0] = IMG_LoadTexture(renderer, "char1.png");
+    playerTextures[1] = IMG_LoadTexture(renderer, "char2.png");
+    playerTextures[2] = IMG_LoadTexture(renderer, "char3.png");
+    playerTextures[3] = IMG_LoadTexture(renderer, "char4.png");
     winTextures[0] = IMG_LoadTexture(renderer, "win1.png");
     winTextures[1] = IMG_LoadTexture(renderer, "win2.png");
+    winTextures[2] = IMG_LoadTexture(renderer, "win3.png");
+    winTextures[3] = IMG_LoadTexture(renderer, "win4.png");
     howtoTexture = IMG_LoadTexture(renderer, "howto.png");
     soundOnTexture = IMG_LoadTexture(renderer, "sound_on.png");
     soundOffTexture = IMG_LoadTexture(renderer, "sound_off.png");
     endTexture = IMG_LoadTexture(renderer, "end.png");
     homeButtonTexture = IMG_LoadTexture(renderer, "home_button.png");
     replayButtonTexture = IMG_LoadTexture(renderer, "replay_button.png");
+    player1Bg = IMG_LoadTexture(renderer, "player1_bg.png");
+    player2Bg = IMG_LoadTexture(renderer, "player2_bg.png");
+    Mix_Chunk* jumpSound = Mix_LoadWAV("jump.mp3");
+    Mix_Chunk* upSound = Mix_LoadWAV("up.mp3");
+    Mix_Chunk* downSound = Mix_LoadWAV("down.mp3");
 
 
     SDL_Rect soundRect = {SCREEN_WIDTH - 80, 20, 50, 50};
@@ -277,6 +404,35 @@ int main(int argc, char *argv[]) {
         SDL_Quit();
         return 0;
     }
+    int numPlayers = showGameModeSelection(renderer);
+    if (numPlayers == 0) {
+        // Nếu người dùng thoát thì cleanup
+        Mix_CloseAudio();
+        TTF_CloseFont(font);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return 0;
+    }
+    bool takenChars[4] = {false, false, false, false};  // Đánh dấu nhân vật đã chọn
+
+    // Chọn cho Player 1
+    int selectedChar1 = showCharacterSelection(renderer, 1, takenChars, player1Bg);
+    if (selectedChar1 == -1) return 0;
+    player1.character = selectedChar1;
+    takenChars[selectedChar1] = true;
+
+    // Chọn cho Player 2 nếu có
+    if (numPlayers == 2) {
+        int selectedChar2 = showCharacterSelection(renderer, 2, takenChars, player2Bg);
+        if (selectedChar2 == -1) return 0;
+        player2.character = selectedChar2;
+        takenChars[selectedChar2] = true;
+    } else {
+        player2.character = 3;  // Nếu chơi 1P, gán mặc định
+    }
+
 
     bool quit = false;
     SDL_Event e;
@@ -308,14 +464,47 @@ int main(int argc, char *argv[]) {
 
                     if (x >= homeRect.x && x <= homeRect.x + homeRect.w &&
                         y >= homeRect.y && y <= homeRect.y + homeRect.h) {
-                        // Quay lại menu
-                        if (showMenu(renderer) != 0) quit = true;
-                        // Reset game trạng thái
-                        player1.position = 1;
-                        player2.position = 1;
-                        turn = 1;
-                        gameWon = false;
+
+                        // Hiện lại menu
+                        if (showMenu(renderer) != 0) {
+                            quit = true;
+                        } else {
+                            // Chọn lại chế độ chơi
+                            numPlayers = showGameModeSelection(renderer);
+                            if (numPlayers == 0) {
+                                quit = true;
+                            } else {
+                                // Chọn lại nhân vật
+                                bool takenChars[4] = {false, false, false, false};
+
+                                int selectedChar1 = showCharacterSelection(renderer, 1, takenChars, player1Bg);
+                                if (selectedChar1 == -1) quit = true;
+                                else {
+                                    player1.character = selectedChar1;
+                                    takenChars[selectedChar1] = true;
+
+                                    if (numPlayers == 2) {
+                                        int selectedChar2 = showCharacterSelection(renderer, 2, takenChars, player2Bg);
+                                        if (selectedChar2 == -1) quit = true;
+                                        else {
+                                            player2.character = selectedChar2;
+                                            takenChars[selectedChar2] = true;
+                                        }
+                                    } else {
+                                        player2.character = 3;
+                                    }
+
+                                    // Reset trạng thái
+                                    player1.position = 1;
+                                    player2.position = 1;
+                                    turn = 1;
+                                    gameWon = false;
+                                }
+
+                            }
+                        }
                     }
+
 
                     if (x >= replayRect.x && x <= replayRect.x + replayRect.w &&
                         y >= replayRect.y && y <= replayRect.y + replayRect.h) {
@@ -328,24 +517,40 @@ int main(int argc, char *argv[]) {
                 }
             }
 
+        if (e.type == SDL_QUIT) quit = true;
+        else if (!gameWon && !isMoving) {
+                if ((numPlayers == 2 && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) ||
+                    (numPlayers == 1 && turn == 1 && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE)) {
 
-            if (e.type == SDL_QUIT) quit = true;
-            else if (!gameWon && !isMoving && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
-                currentRoll = rollDice();
-                Player& currentPlayer = (turn == 1 ? player1 : player2);
+                    currentRoll = rollDiceAnimation(renderer, player1, player2);
+                    Player& currentPlayer = (turn == 1 ? player1 : player2);
+                    targetPos = currentPlayer.position + currentRoll;
+                    if (targetPos > 64) targetPos = currentPlayer.position;
+                    isMoving = true;
+                }
+            }
+
+
+        }
+
+                if (!gameWon && numPlayers == 1 && turn == 2 && !isMoving) {
+                SDL_Delay(800); // delay nhẹ để người chơi thấy máy chuẩn bị roll
+                currentRoll = rollDiceAnimation(renderer, player1, player2);
+                Player& currentPlayer = player2;
                 targetPos = currentPlayer.position + currentRoll;
                 if (targetPos > 64) targetPos = currentPlayer.position;
                 isMoving = true;
             }
-        }
+
 
         if (isMoving) {
             Player& currentPlayer = (turn == 1 ? player1 : player2);
             if (currentPlayer.position < targetPos) {
                 currentPlayer.position++;
+                if (!isMuted && jumpSound) Mix_PlayChannel(-1, jumpSound, 0);
                 SDL_Delay(500);
             } else {
-                checkSnakesAndLadders(currentPlayer);
+                checkSnakesAndLadders(currentPlayer, downSound, upSound);
                 if (currentPlayer.position == 64) {
                     gameWon = true;
                     winner = (turn == 1 ? "Player 1" : "Player 2") + string(" Wins!");
@@ -365,24 +570,23 @@ int main(int argc, char *argv[]) {
         drawPlayer(renderer, player2, 1);
 
         if (gameWon) {
-            if (endTexture) {
-                SDL_Rect endRect = {SCREEN_WIDTH / 2 - 600/2, SCREEN_HEIGHT / 2 - 600/2, 600, 600};
-                SDL_RenderCopy(renderer, endTexture, nullptr, &endRect);
-            }
+            SDL_Rect endRect = {0, 0, 900, 700};
+            SDL_RenderCopy(renderer, endTexture, nullptr, &endRect);
 
-            int winnerIndex = (turn == 1 ? 0 : 1);
-            if (winTextures[winnerIndex]) {
-                SDL_Rect winRect = {SCREEN_WIDTH / 2 - 600/2, SCREEN_HEIGHT / 2 - 550/2, 600, 340};
-                SDL_RenderCopy(renderer, winTextures[winnerIndex], nullptr, &winRect);
-            }
-            SDL_Rect homeRect = {SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 100, 100, 100};
-            SDL_Rect replayRect = {SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 2 + 100, 100, 100};
+            int winChar = (turn == 1 ? player1.character : player2.character);
+            SDL_Rect winRect = {0, 0, 900, 700};
+            SDL_RenderCopy(renderer, winTextures[winChar], nullptr, &winRect);
+
+            SDL_Rect homeRect = {SCREEN_WIDTH / 2 - 110, SCREEN_HEIGHT / 2 + 100, 100, 100};
+            SDL_Rect replayRect = {SCREEN_WIDTH / 2 + 50, SCREEN_HEIGHT / 2 + 100, 100, 100};
             SDL_RenderCopy(renderer, homeButtonTexture, NULL, &homeRect);
             SDL_RenderCopy(renderer, replayButtonTexture, NULL, &replayRect);
         } else {
-            renderText(renderer, "Move:", 20, 150);
+            renderText(renderer, "Turn:", 25, 150);
             SDL_Rect turnPlayerRect = {90, 135, 45, 45};
-            SDL_RenderCopy(renderer, playerTextures[turn - 1], NULL, &turnPlayerRect);
+            int currentCharacter = (turn == 1 ? player1.character : player2.character);
+            SDL_RenderCopy(renderer, playerTextures[currentCharacter], NULL, &turnPlayerRect);
+
         }
         // Hiển thị nút âm thanh góc trên bên phải
         SDL_Rect soundRect = {40,SCREEN_HEIGHT- 120, 80, 80};
