@@ -1,0 +1,75 @@
+# depslib dependency file v1.0
+1746895289 source:c:\c++ so sinh\btl\game_resources.cpp
+	"game_resources.h"
+	"player.h"
+	"constants.h"
+	<SDL2/SDL_image.h>
+	<iostream>
+
+1746951908 c:\c++ so sinh\btl\game_resources.h
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_mixer.h>
+	<string>
+
+1746793911 c:\c++ so sinh\btl\player.h
+
+1746796288 c:\c++ so sinh\btl\constants.h
+
+1746959111 source:c:\c++ so sinh\btl\main.cpp
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_image.h>
+	<SDL2/SDL_mixer.h>
+	<iostream>
+	<cstdlib>
+	<ctime>
+	<string>
+	"constants.h"
+	"player.h"
+	"game_resources.h"
+	"game_logic.h"
+	"menu.h"
+	"game_implementation.h"
+
+1746951908 c:\c++ so sinh\btl\game_logic.h
+	<SDL2/SDL.h>
+	<SDL2/SDL_mixer.h>
+	"player.h"
+
+1746953810 c:\c++ so sinh\btl\menu.h
+	<SDL2/SDL.h>
+
+1746955775 source:c:\c++ so sinh\btl\menu.cpp
+	"menu.h"
+	"constants.h"
+	"game_resources.h"
+	<SDL2/SDL_image.h>
+	<SDL2/SDL_mixer.h>
+
+1746952243 source:c:\c++ so sinh\btl\game_logic.cpp
+	"constants.h"
+	"game_logic.h"
+	"game_resources.h"
+	<cstdlib>
+	<SDL2/SDL.h>
+
+1746958692 c:\c++ so sinh\btl\game_implementation.h
+	<SDL2/SDL.h>
+	<SDL2/SDL_mixer.h>
+	"player.h"
+
+1746958692 source:c:\c++ so sinh\btl\game_implementation.cpp
+	"game_implementation.h"
+	"constants.h"
+	"player.h"
+	"game_resources.h"
+	"game_logic.h"
+	"menu.h"
+	<SDL2/SDL.h>
+	<SDL2/SDL_image.h>
+	<SDL2/SDL_ttf.h>
+	<SDL2/SDL_mixer.h>
+	<iostream>
+	<string>
+
